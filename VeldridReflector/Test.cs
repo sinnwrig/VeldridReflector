@@ -10,239 +10,158 @@ namespace Application
 {
     public static class Test
     {
-        private static Sdl2Window _window;
-        private static GraphicsDevice _device;
+        private static Sdl2Window window;
+        private static GraphicsDevice device;
 
-        private static DeviceBuffer _vertexBuffer;
-        private static DeviceBuffer _indexBuffer;
+        private static BindableShader shader;
+        private static BindableShaderResources resources;
 
-        private static BindableResources _resources;
-        private static ResourceSet _resourceSet;
-
-        private static Texture _surfaceTexture;
-        private static TextureView _surfaceTextureView;
+        private static Texture texture;
+        private static TextureView textureView;
         
-        private static CommandList _cl;
-        private static Pipeline _pipeline;
+        private static CommandList list;
+        private static Pipeline pipeline;
         
 
-        private static float _ticks;
-
-
+        static float time;
 
         public static void Main()
         {
-            WindowCreateInfo ci = new();
-            ci.X = 1920 / 2;
-            ci.Y = 1080 / 2;
-            ci.WindowWidth = 1920 / 4;
-            ci.WindowHeight = 1080 / 4;
+            WindowCreateInfo ci = new(1920 / 2, 1080 / 2, 1920 / 4, 1080 / 4, WindowState.Normal, "Reflection Demo");
 
-            GraphicsDeviceOptions opt = new();
-            opt.HasMainSwapchain = true;
-            opt.SyncToVerticalBlank = true;
-            opt.SwapchainDepthFormat = PixelFormat.R16_UNorm;
+            GraphicsDeviceOptions opt = new(false, PixelFormat.R16_UNorm, false);
 
-            _window = VeldridStartup.CreateWindow(ci);
-            _device = VeldridStartup.CreateGraphicsDevice(_window, opt, GraphicsBackend.Vulkan);
+            window = VeldridStartup.CreateWindow(ci);
+            
+            device = VeldridStartup.CreateGraphicsDevice(window, opt, GraphicsBackend.OpenGLES);
 
-            CreateResources(_device.ResourceFactory);
+            window.Resized += () => device.ResizeMainWindow((uint)window.Width, (uint)window.Height);
 
-            System.Diagnostics.Stopwatch sw = new();
-            sw.Start(); 
+            CreateResources(device.ResourceFactory);
 
-            _window.Resized += () => _device.ResizeMainWindow((uint)_window.Width, (uint)_window.Height);
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            int fpsCounter = 0;
+            float counterSeconds = 0;
 
-            while (_window.Exists)
+            while (window.Exists)
             {
-                _window.PumpEvents();
+                window.PumpEvents();
 
-                float dt = (float)sw.Elapsed.TotalSeconds;
+                float dt = (float)watch.Elapsed.TotalSeconds;
 
-                sw.Restart();
+                counterSeconds += dt;
+                time += dt;
 
-                Draw(dt);
+                if (counterSeconds < 1.0f)
+                {
+                    fpsCounter++;
+                }
+                else
+                {
+                    Console.Write($"\rFPS : {fpsCounter}");
+                    counterSeconds = 0;
+                    fpsCounter = 0;
+                }
+
+                watch.Restart();
+
+                Draw();
             }
         }
 
 
-        static uint v4Size = sizeof(float) * 4;
+        static BindableShader CompileShader(GraphicsDevice device)
+        {
+            bool flipVertexY = device.BackendType == GraphicsBackend.Vulkan;
+
+            string shaderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Shaders", "cube.hlsl");
+            string shaderCode = File.ReadAllText(shaderPath);
+
+            var compiledSPIRV = ShaderCompiler.Compile(shaderCode, [ ("vert", ShaderStages.Vertex), ("frag", ShaderStages.Fragment) ], flipVertexY);
+            
+            using var context = new SPIRVCross.NET.Context();
+
+            var shaderDescription = ShaderCompiler.Reflect(context, compiledSPIRV);
+            var crossCompiledShaders = ShaderCompiler.CrossCompile(context, device.BackendType, compiledSPIRV);
+
+            return new BindableShader(shaderDescription, crossCompiledShaders, device);
+        }
 
 
         static void CreateResources(ResourceFactory factory)
         {
-            _vertexBuffer = factory.CreateBuffer(new BufferDescription((uint)CubeVertices.Length * (v4Size * 2), BufferUsage.VertexBuffer));
+            texture = TextureUtils.Create2D<RgbaByte>(TextureData, device, TextureUsage.Sampled);
+            textureView = factory.CreateTextureView(texture);
 
-            _device.UpdateBuffer(_vertexBuffer, 0, CubeVertices);
-            _device.UpdateBuffer(_vertexBuffer, (uint)CubeVertices.Length * v4Size, CubeUVs);
+            bool flipVertexY = device.BackendType == GraphicsBackend.Vulkan;
 
-            _indexBuffer = factory.CreateBuffer(new BufferDescription(sizeof(ushort) * (uint)Indices.Length, BufferUsage.IndexBuffer));
-            _device.UpdateBuffer(_indexBuffer, 0, Indices);
+            shader = CompileShader(device);
 
-            _surfaceTexture = TextureUtils.Create2D<Color>(TextureData, _device, TextureUsage.Sampled);
+            resources = shader.CreateResources(device);
 
-            _surfaceTextureView = factory.CreateTextureView(_surfaceTexture);
-
-            var result = ShaderCompiler.Compile(ShaderCode.sourceCode, [ ("vert", ShaderStages.Vertex), ("frag", ShaderStages.Fragment) ], _device.BackendType);
-            
-            var reflectedDescrition  = ShaderReflector.Reflect(_device, result);
-            
-            _resources = new BindableResources(reflectedDescrition, _device);
-
-            _resources.SetTexture(null, "SurfaceTexture", _surfaceTexture);
-            _resources.SetSampler(null, "SurfaceSampler", _device.PointSampler);
-
-            _resourceSet = _resources.CreateResourceSet(_device);
+            resources.SetTexture("SurfaceTexture", texture);
 
             GraphicsPipelineDescription description = new GraphicsPipelineDescription(
                 BlendStateDescription.SingleOverrideBlend,
                 DepthStencilStateDescription.DepthOnlyLessEqual,
                 RasterizerStateDescription.Default,
                 PrimitiveTopology.TriangleList,
-                reflectedDescrition.shaderSet,
-                reflectedDescrition.layout,
-                _device.MainSwapchain.Framebuffer.OutputDescription
+                shader.shaderSet,
+                shader.resourceLayout,
+                device.MainSwapchain.Framebuffer.OutputDescription
             );
 
-            _pipeline = factory.CreateGraphicsPipeline(description);
-            _cl = factory.CreateCommandList();
+            description.RasterizerState.FrontFace = FrontFace.Clockwise;
+
+            pipeline = factory.CreateGraphicsPipeline(description);
+            list = factory.CreateCommandList();
         }
 
-        static void Draw(float deltaSeconds)
+        static void Draw()
         {
-            _ticks += deltaSeconds * 1000f;
-            _cl.Begin();
+            list.Begin();
+            list.SetFramebuffer(device.MainSwapchain.Framebuffer);
+            list.ClearColorTarget(0, RgbaFloat.Blue);
+            list.ClearDepthStencil(1f);
+            list.SetPipeline(pipeline);
 
             Matrix4x4 FOV = Matrix4x4.CreatePerspectiveFieldOfView(
                 1.0f,
-                (float)_window.Width / _window.Height,
+                (float)window.Width / window.Height,
                 0.5f,
                 100f);
 
-            Matrix4x4 view = Matrix4x4.CreateLookAt(new Vector3(0, 2, 3), Vector3.Zero, Vector3.UnitY);
-            Matrix4x4 rot = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, _ticks / 1000f);
+            Matrix4x4 view = Matrix4x4.CreateLookAt(new Vector3(0, 3, 3), Vector3.Zero, Vector3.UnitY);
+            Matrix4x4 rot = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, time);
 
-            _resources.SetMatrix(_cl, "MVP", rot * view * FOV);
-            _resources.SetVector(_cl, "BaseColor", new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+            Cube.SetDrawData(device, list, shader);
 
-            _cl.SetFramebuffer(_device.MainSwapchain.Framebuffer);
-            _cl.ClearColorTarget(0, RgbaFloat.CornflowerBlue);
-            _cl.ClearDepthStencil(1f);
-            _cl.SetPipeline(_pipeline);
-            
-            int posLocation = _resources.description.GetInputLocation(new StageInput("POSITION", 0));
+            resources.SetVector("BaseColor", Vector4.One);
+            resources.SetVectorArray("AdditionalColors", AdditionalColors);
+            resources.SetFloat("MinValue", 0.25f);
+            resources.SetVector("ExtraColor", -Vector4.One * 0.5f);
+            resources.SetMatrix("MVP", rot * view * FOV);
+        
+            resources.Bind(device.ResourceFactory, list);
 
-            if (posLocation >= 0)
-                _cl.SetVertexBuffer((uint)posLocation, _vertexBuffer, 0);
+            Cube.Draw(list);
+    
+            list.End();
 
-            int uvLocation = _resources.description.GetInputLocation(new StageInput("TEXCOORD", 0));
-
-            if (uvLocation >= 0)
-                _cl.SetVertexBuffer((uint)uvLocation, _vertexBuffer, (uint)CubeVertices.Length * v4Size);
-
-            _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt16);
-            _cl.SetGraphicsResourceSet(0, _resourceSet);
-            _cl.DrawIndexed(36, 1, 0, 0, 0);
-            _cl.End();
-
-            _device.SubmitCommands(_cl);
-            _device.SwapBuffers(_device.MainSwapchain);
-            _device.WaitForIdle();
+            device.SubmitCommands(list);
+            device.SwapBuffers(device.MainSwapchain);
+            device.WaitForIdle();
         }
 
 
-        private static Color[,] TextureData = new Color[2, 2]
+        private static RgbaByte[,] TextureData = new RgbaByte[2, 2]
         {
-            { Color.White, Color.Black },  
-            { Color.Black, Color.White },
+            { RgbaByte.White, RgbaByte.Black },  
+            { RgbaByte.Black, RgbaByte.White },
         };
 
-        private static Vector4[] CubeVertices = 
-        [
-            // Top
-            new Vector4(-0.5f, +0.5f, -0.5f, 0.0f), 
-            new Vector4(+0.5f, +0.5f, -0.5f, 0.0f), 
-            new Vector4(+0.5f, +0.5f, +0.5f, 0.0f), 
-            new Vector4(-0.5f, +0.5f, +0.5f, 0.0f), 
+        private static Vector4[] AdditionalColors;
 
-            // Bottom                                                             
-            new Vector4(-0.5f, -0.5f, +0.5f, 0.0f),
-            new Vector4(+0.5f, -0.5f, +0.5f, 0.0f),
-            new Vector4(+0.5f, -0.5f, -0.5f, 0.0f),
-            new Vector4(-0.5f, -0.5f, -0.5f, 0.0f),
-                
-            // Left                                                               
-            new Vector4(-0.5f, +0.5f, -0.5f, 0.0f),
-            new Vector4(-0.5f, +0.5f, +0.5f, 0.0f),
-            new Vector4(-0.5f, -0.5f, +0.5f, 0.0f),
-            new Vector4(-0.5f, -0.5f, -0.5f, 0.0f),
-                
-            // Right                                                              
-            new Vector4(+0.5f, +0.5f, +0.5f, 0.0f),
-            new Vector4(+0.5f, +0.5f, -0.5f, 0.0f),
-            new Vector4(+0.5f, -0.5f, -0.5f, 0.0f),
-            new Vector4(+0.5f, -0.5f, +0.5f, 0.0f),
-                
-            // Back                                                               
-            new Vector4(+0.5f, +0.5f, -0.5f, 0.0f),
-            new Vector4(-0.5f, +0.5f, -0.5f, 0.0f),
-            new Vector4(-0.5f, -0.5f, -0.5f, 0.0f),
-            new Vector4(+0.5f, -0.5f, -0.5f, 0.0f),
-                
-            // Front                                                              
-            new Vector4(-0.5f, +0.5f, +0.5f, 0.0f),
-            new Vector4(+0.5f, +0.5f, +0.5f, 0.0f),
-            new Vector4(+0.5f, -0.5f, +0.5f, 0.0f),
-            new Vector4(-0.5f, -0.5f, +0.5f, 0.0f),
-        ];
-
-        private static Vector4[] CubeUVs =
-        [
-            // Top
-            new Vector4(0, 0, 0, 0),
-            new Vector4(1, 0, 0, 0),
-            new Vector4(1, 1, 0, 0),
-            new Vector4(0, 1, 0, 0),
-
-            // Bottom                                                             
-            new Vector4(0, 0, 0, 0),
-            new Vector4(1, 0, 0, 0),
-            new Vector4(1, 1, 0, 0),
-            new Vector4(0, 1, 0, 0),
-                
-            // Left                                                               
-            new Vector4(0, 0, 0, 0),
-            new Vector4(1, 0, 0, 0),
-            new Vector4(1, 1, 0, 0),
-            new Vector4(0, 1, 0, 0),
-                
-            // Right                                                              
-            new Vector4(0, 0, 0, 0),
-            new Vector4(1, 0, 0, 0),
-            new Vector4(1, 1, 0, 0),
-            new Vector4(0, 1, 0, 0),
-                
-            // Back                                                               
-            new Vector4(0, 0, 0, 0),
-            new Vector4(1, 0, 0, 0),
-            new Vector4(1, 1, 0, 0),
-            new Vector4(0, 1, 0, 0),
-                
-            // Front                                                              
-            new Vector4(0, 0, 0, 0),
-            new Vector4(1, 0, 0, 0),
-            new Vector4(1, 1, 0, 0),
-            new Vector4(0, 1, 0, 0),
-        ];
-
-        private static ushort[] Indices = 
-        [
-            0,1,2, 0,2,3,
-            4,5,6, 4,6,7,
-            8,9,10, 8,10,11,
-            12,13,14, 12,14,15,
-            16,17,18, 16,18,19,
-            20,21,22, 20,22,23,
-        ];
+        private static Mesh Cube = Mesh.CreateCube(Vector3.One);
     }
 }

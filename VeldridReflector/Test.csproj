@@ -9,8 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Update="Shaders\**\*.hlsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="DirectXShaderCompiler.NET" Version="1.0.0" />
-    <PackageReference Include="SPIRV-Cross.NET" Version="1.0.0" />
+    <PackageReference Include="SPIRV-Cross.NET" Version="1.0.1" />
     
     <ProjectReference Include="../Veldrid/src/Veldrid/Veldrid.csproj" />
     <ProjectReference Include="../Veldrid/src/Veldrid.SDL2/Veldrid.SDL2.csproj" />

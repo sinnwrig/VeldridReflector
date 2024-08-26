@@ -1,127 +1,11 @@
-using System.Numerics;
 using Veldrid;
-using DirectXShaderCompiler.NET;
+
 using SPIRVCross.NET;
-using System.Text.RegularExpressions;
-using System.Runtime.CompilerServices;
-using System.Text;
 
 #pragma warning disable
 
 namespace Application
 {
-    public readonly record struct PropertyID
-    {
-        private readonly int _internalValue;
-
-        public static explicit operator uint(PropertyID id) => Unsafe.As<PropertyID, uint>(ref id);
-
-        public static explicit operator PropertyID(uint id) => Unsafe.As<uint, PropertyID>(ref id);
-
-        public static implicit operator PropertyID(string propertyName) => new PropertyID(propertyName); 
-
-
-        public PropertyID(string propertyName)
-        {
-            _internalValue = HashProperty(propertyName);
-        }
-
-        public PropertyID(int propertyID)
-        {
-            _internalValue = propertyID;
-        }
-
-        private static int HashProperty(string propertyName)
-        {
-            return propertyName.GetHashCode();
-        }
-    }
-
-
-    public enum UniformType
-    {
-        Texture,
-        Sampler,
-        StorageBuffer,
-        ConstantBuffer,
-    }
-
-    public enum ValueType
-    {
-        None = 0,
-        Float,
-        Int,
-        UInt
-    }
-
-    public record struct ConstantBufferMember 
-    { 
-        public PropertyID identifier;
-
-        public uint bufferOffsetInBytes;
-
-        public uint width;
-        public uint height;
-        public uint size;
-
-        public uint arrayStride;
-        public uint matrixStride;
-
-        public ValueType type;
-    }
-
-    public class Uniform(string name, uint binding, ResourceKind kind)
-    { 
-        public readonly ResourceKind kind = kind;
-        public readonly string name = name;
-        public readonly PropertyID identifier = name;
-        public readonly uint binding = binding;
-
-        public uint size;
-        public ConstantBufferMember[] members;
-
-        public override string ToString()
-        {
-            StringBuilder sb = new();
-
-            sb.AppendLine($"{identifier}");
-            sb.AppendLine($"  Type: {kind}");
-            sb.AppendLine($"  Binding: {binding}");
-
-            if (kind != ResourceKind.UniformBuffer)
-                return sb.ToString();
-
-            sb.AppendLine($"  Byte size: {size}");
-            sb.AppendLine("  Members:");
-
-            foreach (var member in members)
-            {
-                sb.AppendLine($"    ID: {member.identifier}");
-                sb.AppendLine($"    Type: {member.type}");
-                sb.AppendLine($"    Width: {member.width}");
-                sb.AppendLine($"    Height: {member.height}");
-                sb.AppendLine($"    Buffer offset: {member.bufferOffsetInBytes}");
-                sb.AppendLine($"    Size: {member.size}");
-                sb.AppendLine($"    Array stride: {member.arrayStride}");
-                sb.AppendLine($"    Matrix stride: {member.matrixStride}");
-            }
-
-            return sb.ToString();
-        }
-
-
-        public bool IsEqual(Uniform other)
-        {
-            if (kind != other.kind)
-                return false;
-
-            if (kind == ResourceKind.UniformBuffer && size != other.size && !members.SequenceEqual(other.members))
-                return false;
-            
-            return identifier == other.identifier && binding == other.binding;
-        }
-    }
-
     public static partial class UniformReflector
     {
         public static Uniform[] GetUniforms(Reflector reflector, Resources resources)
@@ -168,7 +52,7 @@ namespace Application
         {
             uint binding = GetBinding(reflector, bufferResource.id);
 
-            List<ConstantBufferMember> members = new();
+            List<UniformMember> members = new();
 
             var decoratedType = reflector.GetTypeHandle(bufferResource.type_id);
             var baseType = reflector.GetTypeHandle(decoratedType.BaseTypeID);
@@ -186,9 +70,9 @@ namespace Application
                 if (!IsPrimitiveType(type.BaseType))
                     continue;
 
-                ConstantBufferMember member;
+                UniformMember member;
 
-                member.identifier = reflector.GetMemberName(baseType.BaseTypeID, i);
+                member.name = reflector.GetMemberName(baseType.BaseTypeID, i);
                 member.bufferOffsetInBytes = reflector.StructMemberOffset(baseType, i);
                 member.size = (uint)reflector.GetDeclaredStructMemberSize(baseType, i);
 
@@ -227,7 +111,7 @@ namespace Application
                 members.Add(member);
             }
 
-            return new Uniform(bufferResource.name, binding, ResourceKind.UniformBuffer) { size = size, members = members.ToArray() };
+            return new Uniform(bufferResource.name, binding, size, members.ToArray());
         }
 
         static uint GetBinding(Reflector reflector, ID id)

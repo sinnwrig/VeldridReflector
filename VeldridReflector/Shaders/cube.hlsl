@@ -1,13 +1,8 @@
-
-
-public static class ShaderCode
-{
-    public const string sourceCode = 
-"""
 struct appdata
 {
     float3 pos : POSITION;
     float2 uv : TEXCOORD0;
+    float4 something : MYFUNKYSEMANTIC;
 };
 
 struct v2f 
@@ -16,16 +11,23 @@ struct v2f
     float2 uv : TEXCOORD0;
 };
 
+#define SIZE 1000
+
 float4x4 MVP;
 Texture2D<float4> SurfaceTexture;
 SamplerState SurfaceSampler;
 float4 BaseColor;
 
+cbuffer _MyData
+{
+    float4 ExtraColor;
+}
+
 v2f vert(appdata input)
 {
     v2f output = (v2f)0;
 
-    output.pos = mul(MVP, float4(input.pos.xyz, 1.0));
+    output.pos = mul(MVP, float4(input.pos + input.something.xyz * 0.01, 1.0));
     output.uv = input.uv;
 
     return output;
@@ -33,7 +35,7 @@ v2f vert(appdata input)
 
 float4 frag(v2f input) : SV_TARGET
 {
-    return SurfaceTexture.Sample(SurfaceSampler, input.uv) * BaseColor;
-}
-""";
+    float4 base = BaseColor + ExtraColor;
+
+    return SurfaceTexture.Sample(SurfaceSampler, input.uv) * base;
 }

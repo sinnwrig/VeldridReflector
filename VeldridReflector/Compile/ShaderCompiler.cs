@@ -1,8 +1,6 @@
-using System.Numerics;
 using Veldrid;
+
 using DirectXShaderCompiler.NET;
-using SPIRVCross.NET;
-using System.Text.RegularExpressions;
 
 #pragma warning disable
 
@@ -10,18 +8,6 @@ namespace Application
 {
     public static partial class ShaderCompiler
     {
-        // HLSL semantics are treated as identifiers for the program to know what inputs go where.
-        // A shader author can make any semantic they want and bind any element to it, 
-        // but we can pass in some defaults that have an enforced format that meshes will upload.
-        static readonly Dictionary<string, VertexElementFormat> DefaultSemantics = new()
-        {
-            { "COLOR", VertexElementFormat.Float4 },
-            { "NORMAL", VertexElementFormat.Float4 },
-            { "POSITION", VertexElementFormat.Float4 },
-            { "TANGENT", VertexElementFormat.Float4 },
-            { "TEXCOORD", VertexElementFormat.Float4 },
-        };
-
         private static ShaderType StageToType(ShaderStages stages)
         {
             return stages switch 
@@ -33,8 +19,9 @@ namespace Application
                 ShaderStages.Fragment => ShaderType.Fragment
             };
         }
+        
 
-        public static (ShaderStages, byte[])[] Compile(string code, (string, ShaderStages)[] entrypoints, GraphicsBackend backend)
+        public static ShaderDescription[] Compile(string code, (string, ShaderStages)[] entrypoints, bool flipVertexY)
         {
             byte[][] compiledSPIRV = new byte[entrypoints.Length][];
 
@@ -47,8 +34,8 @@ namespace Application
                 options.entryPoint = entrypoints[i].Item1;
                 options.entrypointName = "main"; // Ensure 'main' entrypoint for OpenGL compatibility.
 
-                if (entrypoints[i].Item2 == ShaderStages.Vertex)
-                    options.invertY = backend == GraphicsBackend.Vulkan;
+                if (entrypoints[i].Item2 == ShaderStages.Vertex && flipVertexY)
+                    options.invertY = true;
 
                 CompilationResult result = DirectXShaderCompiler.NET.ShaderCompiler.Compile(code, options, NoInclude);
 
@@ -58,8 +45,9 @@ namespace Application
                 compiledSPIRV[i] = result.objectBytes;
             }
 
-            return compiledSPIRV.Zip(entrypoints, (x, y) => (y.Item2, x)).ToArray();
+            return compiledSPIRV.Zip(entrypoints, (x, y) => new ShaderDescription(y.Item2, x, "main")).ToArray();
         }
+
 
         static string NoInclude(string file)
         {

@@ -3,35 +3,6 @@ using Veldrid;
 
 namespace Application
 {
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct Color
-    {
-        public byte r, g, b, a;
-
-        public Color(byte r, byte g, byte b, byte a = 255)
-        {
-            this.r = r;
-            this.g = g;
-            this.b = b;
-            this.a = a;
-        }
-
-        public Color(float r, float g, float b, float a = 1.0f)
-        {
-            this.r = (byte)(Math.Clamp(r, 0, 1) * 255);
-            this.g = (byte)(Math.Clamp(g, 0, 1) * 255);
-            this.b = (byte)(Math.Clamp(b, 0, 1) * 255);
-            this.a = (byte)(Math.Clamp(a, 0, 1) * 255);
-        }
-
-
-        public static readonly Color White = new Color(1f, 1f, 1f, 1f);
-        public static readonly Color Black = new Color(0f, 0f, 0f, 1f);
-        public static readonly Color Gray = new Color(0.5f, 0.5f, 0.5f, 0.5f);
-
-        public static readonly Color Transparent = new Color(0f, 0f, 0f, 0f);
-    }
-
     public static class TextureUtils
     {
         public static unsafe Texture Create2D<T>(T[,] pixels, GraphicsDevice device, TextureUsage usage, PixelFormat format = PixelFormat.R8_G8_B8_A8_UNorm) where T : unmanaged
@@ -60,6 +31,31 @@ namespace Application
             device.SubmitCommands(cl);
 
             return texture;
+        }
+
+
+        private static Texture? _emptyTex;
+        public static Texture GetEmptyTexture(GraphicsDevice device)
+        {
+            if (_emptyTex != null)
+                return _emptyTex;
+
+            TextureDescription desc = TextureDescription.Texture2D(1, 1, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Sampled);
+            _emptyTex = device.ResourceFactory.CreateTexture(desc);
+
+            return _emptyTex;
+        }
+
+        private static Texture? _emptyRWTex;
+        public static Texture GetEmptyRWTexture(GraphicsDevice device)
+        {
+            if (_emptyRWTex != null)
+                return _emptyRWTex;
+
+            TextureDescription desc = TextureDescription.Texture2D(1, 1, 1, 1, PixelFormat.R8_G8_B8_A8_UNorm, TextureUsage.Storage);
+            _emptyRWTex = device.ResourceFactory.CreateTexture(desc);
+
+            return _emptyRWTex;
         }
     }
 }

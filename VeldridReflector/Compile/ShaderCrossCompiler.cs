@@ -6,12 +6,18 @@ using SPIRVCross.NET.HLSL;
 using SPIRVCross.NET.MSL;
 
 using System.Text;
-using System.Text.RegularExpressions;
 
 #pragma warning disable
 
 namespace Application
 {
+    public struct ReflectedResourceInfo
+    {
+        public StageInput[] vertexInputs;
+        public Uniform[] uniforms;
+        public ShaderStages[] stages;
+    }
+
     public static partial class ShaderCompiler
     {
         // HLSL semantics are treated as identifiers for the program to know what inputs go where.
@@ -24,7 +30,7 @@ namespace Application
             { "COLOR0", VertexElementFormat.Byte4_Norm },
         };
 
-        public static BindableShaderDescription Reflect(Context context, ShaderDescription[] compiledSPIRV)
+        public static ReflectedResourceInfo Reflect(Context context, ShaderDescription[] compiledSPIRV)
         {
             StageInput[] vertexInputs = [];
 
@@ -49,7 +55,7 @@ namespace Application
                 MergeUniforms(uniforms, stages, stageUniforms, shader.Stage);
             }
             
-            return new(vertexInputs, uniforms.ToArray(), stages.ToArray());
+            return new ReflectedResourceInfo() { vertexInputs = vertexInputs, uniforms = uniforms.ToArray(), stages = stages.ToArray() };
         }
 
 

@@ -2,10 +2,11 @@ using System.Numerics;
 using System.Collections.Generic;
 using System.IO;
 using Veldrid;
+using Prowl.Runtime
 
 namespace Application
 {
-    public class Mesh
+    public class Mesh : IGeometryDrawData
     {
         public Vector4[] vertices = [];
         public Vector4[] uv = [];

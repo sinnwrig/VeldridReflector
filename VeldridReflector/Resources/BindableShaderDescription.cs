@@ -3,7 +3,7 @@ using Veldrid;
 
 namespace Application
 {
-    public class BindableShaderDescription(StageInput[] vertexInputs, Uniform[] uniforms, ShaderStages[] stages)
+    public struct BindableShaderDescription(StageInput[] vertexInputs, Uniform[] uniforms, ShaderStages[] stages)
     {
         public StageInput[] VertexInputs = vertexInputs;
         public Uniform[] Uniforms = uniforms;

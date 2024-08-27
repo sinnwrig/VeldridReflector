@@ -14,7 +14,7 @@ namespace Application
         private static GraphicsDevice device;
 
         private static BindableShader shader;
-        private static BindableShaderResources resources;
+        private static BindableResourceSet resources;
 
         private static Texture texture;
         private static TextureView textureView;
@@ -28,11 +28,9 @@ namespace Application
         public static void Main()
         {
             WindowCreateInfo ci = new(1920 / 2, 1080 / 2, 1920 / 4, 1080 / 4, WindowState.Normal, "Reflection Demo");
+            window = VeldridStartup.CreateWindow(ci);
 
             GraphicsDeviceOptions opt = new(false, PixelFormat.R16_UNorm, false);
-
-            window = VeldridStartup.CreateWindow(ci);
-            
             device = VeldridStartup.CreateGraphicsDevice(window, opt, GraphicsBackend.OpenGLES);
 
             window.Resized += () => device.ResizeMainWindow((uint)window.Width, (uint)window.Height);
@@ -70,7 +68,7 @@ namespace Application
         }
 
 
-        static BindableShader CompileShader(GraphicsDevice device)
+        static ShaderDescription[] CompileShader(GraphicsDevice device, out ReflectedResourceInfo resources)
         {
             bool flipVertexY = device.BackendType == GraphicsBackend.Vulkan;
 
@@ -81,10 +79,9 @@ namespace Application
             
             using var context = new SPIRVCross.NET.Context();
 
-            var shaderDescription = ShaderCompiler.Reflect(context, compiledSPIRV);
-            var crossCompiledShaders = ShaderCompiler.CrossCompile(context, device.BackendType, compiledSPIRV);
+            resources = ShaderCompiler.Reflect(context, compiledSPIRV);
 
-            return new BindableShader(shaderDescription, crossCompiledShaders, device);
+            return ShaderCompiler.CrossCompile(context, device.BackendType, compiledSPIRV);
         }
 
 
@@ -95,10 +92,14 @@ namespace Application
 
             bool flipVertexY = device.BackendType == GraphicsBackend.Vulkan;
 
-            shader = CompileShader(device);
+            ShaderDescription[] shaders = CompileShader(device, out ReflectedResourceInfo resourceInfo);
+
+            BindableShaderDescription pipelineDescription = 
+                new(resourceInfo.vertexInputs, resourceInfo.uniforms, resourceInfo.stages);
+            
+            shader = new BindableShader(pipelineDescription, shaders, device);
 
             resources = shader.CreateResources(device);
-
             resources.SetTexture("SurfaceTexture", texture);
 
             GraphicsPipelineDescription description = new GraphicsPipelineDescription(
@@ -108,7 +109,7 @@ namespace Application
                 PrimitiveTopology.TriangleList,
                 shader.shaderSet,
                 shader.resourceLayout,
-                device.MainSwapchain.Framebuffer.OutputDescription
+                device.SwapchainFramebuffer.OutputDescription
             );
 
             description.RasterizerState.FrontFace = FrontFace.Clockwise;

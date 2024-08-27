@@ -119,7 +119,7 @@ namespace Application
         }
 
 
-        public BindableShaderResources CreateResources(GraphicsDevice device)
+        public BindableResourceSet CreateResources(GraphicsDevice device)
         {
             DeviceBuffer[] boundBuffers = new DeviceBuffer[bufferCount];
             BindableResource[] boundResources = new BindableResource[Uniforms.Length];
@@ -139,7 +139,7 @@ namespace Application
             }
 
             ResourceSetDescription setDescription = new ResourceSetDescription(resourceLayout, boundResources);
-            BindableShaderResources resources = new BindableShaderResources(this, setDescription, boundBuffers, intermediateBuffers);
+            BindableResourceSet resources = new BindableResourceSet(this, setDescription, boundBuffers, intermediateBuffers);
 
             return resources;
         }

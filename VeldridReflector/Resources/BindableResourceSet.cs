@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace Application
 {
-    public class BindableShaderResources
+    public class BindableResourceSet
     {
         public BindableShader Shader { get; private set; }
 
@@ -23,7 +23,7 @@ namespace Application
         private bool[] bufferWasModified;
 
 
-        public BindableShaderResources(BindableShader shader, ResourceSetDescription description, DeviceBuffer[] buffers, byte[][] intermediate)
+        public BindableResourceSet(BindableShader shader, ResourceSetDescription description, DeviceBuffer[] buffers, byte[][] intermediate)
         {
             this.Shader = shader;
             this.description = description;

@@ -17,11 +17,6 @@ Texture2D<float4> SurfaceTexture;
 SamplerState SurfaceSampler;
 float4 BaseColor;
 
-cbuffer _MyData
-{
-    float4 ExtraColor;
-}
-
 v2f vert(appdata input)
 {
     v2f output = (v2f)0;
@@ -34,7 +29,5 @@ v2f vert(appdata input)
 
 float4 frag(v2f input) : SV_TARGET
 {
-    float4 base = BaseColor + ExtraColor;
-
-    return SurfaceTexture.Sample(SurfaceSampler, input.uv) * base;
+    return SurfaceTexture.Sample(SurfaceSampler, input.uv) * BaseColor;
 }

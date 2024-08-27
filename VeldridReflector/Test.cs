@@ -87,7 +87,18 @@ namespace Application
 
         static void CreateResources(ResourceFactory factory)
         {
-            texture = TextureUtils.Create2D<RgbaByte>(TextureData, device, TextureUsage.Sampled);
+            RgbaByte[,] texData = new RgbaByte[24, 24];
+
+            for (int i = 0; i < texData.GetLength(0); i++)
+            {
+                for (int j = 0; j < texData.GetLength(1); j++)
+                {
+                    texData[i, j] = i == 0 || j == 0 || i == texData.GetLength(0) - 1 || j == texData.GetLength(1) - 1 ? 
+                        RgbaByte.Black : RgbaByte.White;
+                }
+            }
+
+            texture = TextureUtils.Create2D<RgbaByte>(texData, device, TextureUsage.Sampled);
             textureView = factory.CreateTextureView(texture);
 
             bool flipVertexY = device.BackendType == GraphicsBackend.Vulkan;
@@ -118,11 +129,45 @@ namespace Application
             list = factory.CreateCommandList();
         }
 
+
+        public static Matrix4x4[,,] GetRubiksCubeMatrices()
+        {
+            // Array to hold the 27 matrices
+            Matrix4x4[,,] matrices = new Matrix4x4[3, 3, 3];
+
+            // Size of each small cube
+            float cubeSize = 1.0f;
+            float halfCubeSize = cubeSize / 2.0f;
+            float spacing = 1.025f; // Space between cubes to avoid overlap
+
+            // Loop to create the 3x3x3 grid
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int y = -1; y <= 1; y++)
+                {
+                    for (int z = -1; z <= 1; z++)
+                    {
+                        // Calculate the position of each small cube
+                        Vector3 position = new Vector3(x * spacing, y * spacing, z * spacing);
+                        
+                        // Create the transformation matrix for this position
+                        Matrix4x4 matrix = Matrix4x4.CreateTranslation(position) * 
+                            Matrix4x4.CreateFromQuaternion(Quaternion.Identity);
+                        
+                        // Store the matrix in the array
+                        matrices[x + 1, y + 1, z + 1] = matrix;
+                    }
+                }
+            }
+
+            return matrices;
+        }
+
         static void Draw()
         {
             list.Begin();
             list.SetFramebuffer(device.MainSwapchain.Framebuffer);
-            list.ClearColorTarget(0, RgbaFloat.Blue);
+            list.ClearColorTarget(0, RgbaFloat.Black);
             list.ClearDepthStencil(1f);
             list.SetPipeline(pipeline);
 
@@ -132,21 +177,31 @@ namespace Application
                 0.5f,
                 100f);
 
-            Matrix4x4 view = Matrix4x4.CreateLookAt(new Vector3(0, 3, 3), Vector3.Zero, Vector3.UnitY);
+            Matrix4x4 view = Matrix4x4.CreateLookAt(new Vector3(0, 5, 5), Vector3.Zero, Vector3.UnitY);
             Matrix4x4 rot = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, time);
 
             Cube.SetDrawData(device, list, shader);
-
-            resources.SetVector("BaseColor", Vector4.One);
-            resources.SetVectorArray("AdditionalColors", AdditionalColors);
-            resources.SetFloat("MinValue", 0.25f);
-            resources.SetVector("ExtraColor", -Vector4.One * 0.5f);
-            resources.SetMatrix("MVP", rot * view * FOV);
         
             resources.Bind(device.ResourceFactory, list);
 
-            Cube.Draw(list);
-    
+            Matrix4x4[,,] mats = GetRubiksCubeMatrices();
+
+            for (int x = 0; x < 3; x++)
+            {
+                for (int y = 0; y < 3; y++)
+                {
+                    for (int z = 0; z < 3; z++)
+                    {
+                        resources.SetVector("BaseColor", GetCubeColor(x, y, z));
+                        resources.SetMatrix("MVP", mats[x, y, z] * rot * view * FOV);
+
+                        resources.UpdateBuffer(list, "_Globals");
+
+                        Cube.Draw(list);
+                    }
+                }
+            }
+
             list.End();
 
             device.SubmitCommands(list);
@@ -155,13 +210,26 @@ namespace Application
         }
 
 
-        private static RgbaByte[,] TextureData = new RgbaByte[2, 2]
+        private static Vector4 GetCubeColor(int x, int y, int z)
         {
-            { RgbaByte.White, RgbaByte.LightGrey },  
-            { RgbaByte.LightGrey, RgbaByte.White },
-        };
+            // Determine the color based on the cube's position in the Rubik's Cube
+            // Each cube can have up to 3 colors based on its location
 
-        private static Vector4[] AdditionalColors;
+            // Calculate a color value based on position
+            // Using a simple hash function to create a pseudo-random color based on coordinates
+            int hash = (x * 31 + y * 17 + z * 7) % 6;
+
+            switch (hash)
+            {
+                default: return new Vector4(.9f, 0.1f, 0.2f, 1.0f);
+                case 1: return new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
+                case 2: return new Vector4(0.0f, 0.25f, 1.0f, 1.0f);
+                case 3: return new Vector4(1.0f, 1.0f, 0.0f, 1.0f);
+                case 4: return new Vector4(0.0f, 1.0f, 1.0f, 1.0f);
+                case 5: return new Vector4(.95f, .9f, .8f, 1.0f);
+            }
+        }
+        
 
         private static Mesh Cube = Mesh.CreateCube(Vector3.One);
     }

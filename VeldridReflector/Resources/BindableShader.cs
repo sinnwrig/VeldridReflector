@@ -74,7 +74,7 @@ namespace Application
                 ShaderStages stages = description.UniformStages[uniformIndex];
 
                 layoutDescription.Elements[uniformIndex] = 
-                    new ResourceLayoutElementDescription(GetGLSLName(uniform.name), uniform.kind, stages);
+                    new ResourceLayoutElementDescription(uniform.name, uniform.kind, stages);
 
                 uniformLookup[uniform.name] = Pack(uniformIndex, -1, -1);
 
@@ -167,19 +167,6 @@ namespace Application
         {
             if (semanticLookup.TryGetValue(semantic, out uint location))
                 list.SetVertexBuffer(location, buffer, offset);
-        }
-
-
-        // This is so fucking stupid. 
-        // On kOt's machine, the following GLSL:
-        // "uniform type_SomeBuf { mat4 someProp; } _SomeBuf;"
-        // must be bound using 'type_SomeBuf' instead of the technically correct '_SomeBuf' because stupid vendor-specific compilers.
-        private static string GetGLSLName(string name)
-        {
-            if (name[0] == '_')
-                return "type" + name.Replace("$", "");
-            
-            return "type_" + name.Replace("$", "");
         }
 
         public static ulong Pack(ushort a, short b, int c)

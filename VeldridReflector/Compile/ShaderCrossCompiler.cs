@@ -107,13 +107,21 @@ namespace Application
             compiler.hlslOptions.shaderModel = 50;
             compiler.hlslOptions.pointSizeCompat = true;
 
-            return Encoding.ASCII.GetBytes(compiler.Compile());
+            MakeIncrementalBindings(compiler, false);
+
+            string c = compiler.Compile();
+
+            Console.WriteLine(c);
+
+            return Encoding.ASCII.GetBytes(c);
         }
 
 
         private static byte[] CompileMSL(Context context, ParsedIR IR)
         {
             MSLCrossCompiler compiler = context.CreateMSLCompiler(IR);
+
+            MakeIncrementalBindings(compiler, true);
 
             return Encoding.UTF8.GetBytes(compiler.Compile());
         }
@@ -136,7 +144,87 @@ namespace Application
             foreach (var res in compiler.GetCombinedImageSamplers())
                 compiler.SetName(res.combined_id, compiler.GetName(res.image_id));
 
-            return Encoding.ASCII.GetBytes(compiler.Compile());
+            var resources = compiler.CreateShaderResources();
+
+            // Removes annoying 'type_' prefix
+            foreach (var res in resources.UniformBuffers)
+                compiler.SetName(res.base_type_id, compiler.GetName(res.id));
+
+            string c = compiler.Compile();
+
+            Console.WriteLine(c);
+
+            return Encoding.ASCII.GetBytes(c);
+        }
+        
+
+        private static uint GetResourceIndex(
+            bool targetMSL,
+            ResourceKind resourceKind,
+            ref uint bufferIndex,
+            ref uint textureIndex,
+            ref uint uavIndex,
+            ref uint samplerIndex)
+        {
+            switch (resourceKind)
+            {
+                case ResourceKind.UniformBuffer:
+                    return bufferIndex++;
+                
+                case ResourceKind.StructuredBufferReadWrite:
+                    if (targetMSL)
+                        return bufferIndex++;
+                    else
+                        return uavIndex++;
+
+                case ResourceKind.TextureReadWrite:
+                    if (targetMSL)
+                        return textureIndex++;
+        
+                    return uavIndex++;
+
+                case ResourceKind.TextureReadOnly:
+                    return textureIndex++;
+
+                case ResourceKind.StructuredBufferReadOnly:
+                    if (targetMSL)
+                        return bufferIndex++;
+                    
+                    return textureIndex++;
+            }
+    
+            return samplerIndex++;
+        }
+
+
+        private static void MakeIncrementalBindings(Reflector reflector, bool isMSL = false)
+        {
+            var resources = reflector.CreateShaderResources();
+
+            uint b = 0;
+            uint t = 0;
+            uint uav = 0;
+            uint s = 0;
+
+            foreach (var v in resources.UniformBuffers)
+                reflector.SetDecoration(v.id, Decoration.Binding, GetResourceIndex(isMSL, ResourceKind.UniformBuffer, ref b, ref t, ref uav, ref s));
+            
+            foreach (var v in resources.SeparateImages)
+                reflector.SetDecoration(v.id, Decoration.Binding, GetResourceIndex(isMSL, ResourceKind.TextureReadOnly, ref b, ref t, ref uav, ref s));
+
+            foreach (var v in resources.SeparateSamplers)
+                reflector.SetDecoration(v.id, Decoration.Binding, GetResourceIndex(isMSL, ResourceKind.Sampler, ref b, ref t, ref uav, ref s));
+
+            foreach (var v in resources.StorageImages)
+                reflector.SetDecoration(v.id, Decoration.Binding, GetResourceIndex(isMSL, ResourceKind.TextureReadWrite, ref b, ref t, ref uav, ref s));
+
+            foreach (var v in resources.StorageBuffers)
+            {
+                if (reflector.HasDecoration(v.id, Decoration.NonWritable))
+                    reflector.SetDecoration(v.id, Decoration.Binding, GetResourceIndex(isMSL, ResourceKind.StructuredBufferReadOnly, ref b, ref t, ref uav, ref s));
+                else
+                    reflector.SetDecoration(v.id, Decoration.Binding, GetResourceIndex(isMSL, ResourceKind.StructuredBufferReadWrite, ref b, ref t, ref uav, ref s));
+            }
         }
 
 

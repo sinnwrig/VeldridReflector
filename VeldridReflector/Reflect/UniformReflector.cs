@@ -13,19 +13,20 @@ namespace Application
             List<Uniform> uniforms = new();       
 
             foreach (var res in resources.StorageImages)
-                uniforms.Add(new Uniform(res.name, GetBinding(reflector, res.id), ResourceKind.TextureReadWrite));
+                uniforms.Add(new Uniform(GetName(reflector, res.id), GetBinding(reflector, res.id), ResourceKind.TextureReadWrite));
 
             foreach (var res in resources.SeparateImages)
-                uniforms.Add(new Uniform(res.name, GetBinding(reflector, res.id), ResourceKind.TextureReadOnly));
+                uniforms.Add(new Uniform(GetName(reflector, res.id), GetBinding(reflector, res.id), ResourceKind.TextureReadOnly));
 
             foreach (var res in resources.SeparateSamplers)
-                uniforms.Add(new Uniform(res.name, GetBinding(reflector, res.id), ResourceKind.Sampler));
+                uniforms.Add(new Uniform(GetName(reflector, res.id), GetBinding(reflector, res.id), ResourceKind.Sampler));
 
             foreach (var res in resources.StorageBuffers)
                 uniforms.Add(CreateStorageBuffer(reflector, res));
 
             // Combined image samplers don't output any names, meaning we don't need to add uniforms for them
             // since the few platforms that care about it (old OpenGL) bind by name, meaning it's useless.
+            // When cross-compiling, we will set the names of the combined samplers to the image anyways.
             // foreach (var combinedImage in resources.SampledImages);
 
             foreach (var res in resources.UniformBuffers)
@@ -45,7 +46,9 @@ namespace Application
             if (reflector.HasDecoration(bufferResource.id, Decoration.NonWritable))
                 return new Uniform(bufferResource.name, binding, ResourceKind.StructuredBufferReadOnly);
             
-            return new Uniform(bufferResource.name, binding, ResourceKind.StructuredBufferReadWrite);
+            string name = GetName(reflector, bufferResource.id);
+
+            return new Uniform(name, binding, ResourceKind.StructuredBufferReadWrite);
         }
 
         static Uniform CreateConstantBuffer(Reflector reflector, ReflectedResource bufferResource)
@@ -111,7 +114,15 @@ namespace Application
                 members.Add(member);
             }
 
-            return new Uniform(bufferResource.name, binding, size, members.ToArray());
+            string name = GetName(reflector, bufferResource.id);
+
+            return new Uniform(name, binding, size, members.ToArray());
+        }
+
+
+        static string GetName(Reflector reflector, ID id)
+        {
+            return reflector.GetName(id).Replace('$', '_');
         }
 
         static uint GetBinding(Reflector reflector, ID id)

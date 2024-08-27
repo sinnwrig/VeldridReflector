@@ -31,7 +31,7 @@ namespace Application
             window = VeldridStartup.CreateWindow(ci);
 
             GraphicsDeviceOptions opt = new(false, PixelFormat.R16_UNorm, false);
-            device = VeldridStartup.CreateGraphicsDevice(window, opt, GraphicsBackend.OpenGLES);
+            device = VeldridStartup.CreateGraphicsDevice(window, opt, GraphicsBackend.Direct3D11);
 
             window.Resized += () => device.ResizeMainWindow((uint)window.Width, (uint)window.Height);
 
@@ -157,8 +157,8 @@ namespace Application
 
         private static RgbaByte[,] TextureData = new RgbaByte[2, 2]
         {
-            { RgbaByte.White, RgbaByte.Black },  
-            { RgbaByte.Black, RgbaByte.White },
+            { RgbaByte.White, RgbaByte.LightGrey },  
+            { RgbaByte.LightGrey, RgbaByte.White },
         };
 
         private static Vector4[] AdditionalColors;

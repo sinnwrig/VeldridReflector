@@ -39,5 +39,5 @@ v2f vert(appdata input)
 
 float4 frag(v2f input) : SV_TARGET
 {
-    return SurfaceTexture.Sample(SurfaceSampler, input.uv) * BaseColor + PData;
+    return SurfaceTexture.Sample(SurfaceSampler, input.uv) * BaseColor * PData;
 }

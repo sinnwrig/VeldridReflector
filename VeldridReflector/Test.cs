@@ -181,6 +181,9 @@ namespace Application
             Matrix4x4 rot = Matrix4x4.CreateFromAxisAngle(Vector3.UnitY, time);
 
             Cube.SetDrawData(device, list, shader);
+
+            resources.SetVector("VData", Vector4.One);
+            resources.SetVector("PData", Vector4.One);
         
             resources.Bind(device.ResourceFactory, list);
 

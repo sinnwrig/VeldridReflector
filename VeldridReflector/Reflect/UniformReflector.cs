@@ -61,7 +61,7 @@ namespace Application
             var baseType = reflector.GetTypeHandle(decoratedType.BaseTypeID);
 
             if (baseType.BaseType != BaseType.Struct)
-                throw new Exception("Constant buffer uniform is not a structure.");
+                throw new Exception("Uniform is not a structure.");
 
             uint size = (uint)reflector.GetDeclaredStructSize(baseType);
 

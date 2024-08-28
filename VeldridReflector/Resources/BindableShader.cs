@@ -73,7 +73,9 @@ namespace Application
                 Uniform uniform = Uniforms[uniformIndex];
                 ShaderStages stages = description.UniformStages[uniformIndex];
 
-                layoutDescription.Elements[uniformIndex] = 
+                Console.WriteLine(uniform.ToString());
+
+                layoutDescription.Elements[uniform.binding] = 
                     new ResourceLayoutElementDescription(uniform.name, uniform.kind, stages);
 
                 uniformLookup[uniform.name] = Pack(uniformIndex, -1, -1);
@@ -127,7 +129,7 @@ namespace Application
 
             for (int i = 0, b = 0; i < Uniforms.Length; i++)
             {
-                boundResources[i] = GetBindableResource(device, Uniforms[i], out DeviceBuffer? buffer);
+                boundResources[Uniforms[i].binding] = GetBindableResource(device, Uniforms[i], out DeviceBuffer? buffer);
 
                 if (buffer != null)
                 {

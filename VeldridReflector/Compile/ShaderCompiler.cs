@@ -1,6 +1,5 @@
-using Veldrid;
-
 using DirectXShaderCompiler.NET;
+using Veldrid;
 
 #pragma warning disable
 
@@ -10,7 +9,7 @@ namespace Application
     {
         private static ShaderType StageToType(ShaderStages stages)
         {
-            return stages switch 
+            return stages switch
             {
                 ShaderStages.Vertex => ShaderType.Vertex,
                 ShaderStages.Geometry => ShaderType.Geometry,
@@ -19,7 +18,7 @@ namespace Application
                 ShaderStages.Fragment => ShaderType.Fragment
             };
         }
-        
+
 
         public static ShaderDescription[] Compile(string code, (string, ShaderStages)[] entrypoints, bool flipVertexY)
         {

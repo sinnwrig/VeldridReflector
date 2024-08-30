@@ -1,8 +1,8 @@
 using System.Numerics;
-using Veldrid;
+using System.Text.RegularExpressions;
 using DirectXShaderCompiler.NET;
 using SPIRVCross.NET;
-using System.Text.RegularExpressions;
+using Veldrid;
 
 #pragma warning disable
 
@@ -12,9 +12,9 @@ namespace Application
     {
         public BindableShader Shader { get; private set; }
 
-        private bool modifiedResources; 
+        private bool modifiedResources;
 
-        public ResourceSetDescription description; 
+        public ResourceSetDescription description;
         private ResourceSet resources;
 
         private DeviceBuffer[] uniformBuffers;
@@ -55,28 +55,28 @@ namespace Application
             list.SetGraphicsResourceSet(0, resources);
         }
 
-        
+
         public bool UpdateBuffer(CommandList list, string ID)
         {
-            if (!GetUniform(ID, out Uniform? uniform, out int buffer, out _))
+            if (!GetUniform(ID, out Uniform? uniform, out sbyte buffer, out _))
                 return false;
-            
+
             if (buffer < 0)
                 return false;
-            
+
             list.UpdateBuffer(uniformBuffers[buffer], 0, intermediateBuffers[buffer]);
 
             return true;
         }
 
 
-        public bool GetUniform(string ID, out Uniform? uniform, out int buffer, out UniformMember member)
+        public bool GetUniform(string ID, out Uniform? uniform, out sbyte buffer, out UniformMember member)
         {
             uniform = null;
             buffer = -1;
             member = default;
 
-            if (!Shader.GetUniform(ID, out int uniformIndex, out buffer, out int memberIndex))
+            if (!Shader.GetUniform(ID, out byte uniformIndex, out buffer, out short memberIndex))
                 return false;
 
             uniform = Shader.Uniforms[uniformIndex];
@@ -93,14 +93,14 @@ namespace Application
             BindableResource res = description.BoundResources[index];
 
             modifiedResources |= res.Resource != newResource.Resource;
-            
+
             description.BoundResources[index] = newResource;
         }
 
 
         public bool SetTexture(string ID, TextureView value)
         {
-            if (value == null || 
+            if (value == null ||
                 (!value.Target.Usage.HasFlag(TextureUsage.Sampled) &&
                 !value.Target.Usage.HasFlag(TextureUsage.Storage)))
                 return false;
@@ -122,7 +122,7 @@ namespace Application
 
         public bool SetTexture(string ID, Texture value)
         {
-            if (value == null || 
+            if (value == null ||
                 (!value.Usage.HasFlag(TextureUsage.Sampled) &&
                 !value.Usage.HasFlag(TextureUsage.Storage)))
                 return false;
@@ -152,7 +152,7 @@ namespace Application
 
             if (uniform.kind != ResourceKind.Sampler)
                 return false;
-            
+
             SetResource(value, uniform.binding);
 
             return true;
@@ -173,7 +173,7 @@ namespace Application
 
         public unsafe bool SetVector(string ID, Vector4 value)
             => UploadData(ID, &value, ValueType.Float, sizeof(float) * 4);
-        
+
 
         public unsafe bool SetMatrix(string ID, Matrix4x4 value)
             => UploadData(ID, &value, ValueType.Float, sizeof(float) * 4 * 4);
@@ -184,7 +184,7 @@ namespace Application
             if (values != null)
                 fixed (float* valuesPtr = values)
                     return UploadData(ID, valuesPtr, ValueType.Float, sizeof(float) * values.Length);
-        
+
             return false;
         }
 
@@ -208,7 +208,7 @@ namespace Application
             return false;
         }
 
-        
+
         public unsafe bool SetMatrixArray(string ID, Matrix4x4[] values)
         {
             if (values != null)
@@ -221,7 +221,7 @@ namespace Application
 
         private unsafe bool UploadData<T>(string ID, T* dataPtr, ValueType type, int maxSize) where T : unmanaged
         {
-            if (!GetUniform(ID, out Uniform? uniform, out int bufferIndex, out UniformMember member))
+            if (!GetUniform(ID, out Uniform? uniform, out sbyte bufferIndex, out UniformMember member))
                 return false;
 
             if (bufferIndex < 0)
@@ -231,11 +231,11 @@ namespace Application
                 return false;
 
             long size = Math.Min(member.size, maxSize);
-            byte[] bytes = intermediateBuffers[bufferIndex]; 
+            byte[] bytes = intermediateBuffers[bufferIndex];
 
             fixed (byte* bytesPtr = bytes)
                 Buffer.MemoryCopy(dataPtr, (bytesPtr + member.bufferOffsetInBytes), member.size, size);
-            
+
             bufferWasModified[bufferIndex] |= true;
 
             return true;
@@ -244,7 +244,7 @@ namespace Application
         public bool SetBuffer(CommandList list, string ID, DeviceBuffer value)
         {
             if (value == null ||
-                (!value.Usage.HasFlag(BufferUsage.StructuredBufferReadOnly) && 
+                (!value.Usage.HasFlag(BufferUsage.StructuredBufferReadOnly) &&
                 !value.Usage.HasFlag(BufferUsage.StructuredBufferReadWrite)))
                 return false;
 
@@ -253,10 +253,10 @@ namespace Application
 
             if (uniform.kind != ResourceKind.StructuredBufferReadOnly && uniform.kind != ResourceKind.StructuredBufferReadWrite)
                 return false;
-                
+
             if (!value.Usage.HasFlag(BufferUsage.StructuredBufferReadWrite) && uniform.kind == ResourceKind.StructuredBufferReadWrite)
                 return false;
-            
+
             SetResource(value, uniform.binding);
 
             return true;

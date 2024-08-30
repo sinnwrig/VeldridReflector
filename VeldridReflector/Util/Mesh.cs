@@ -1,6 +1,6 @@
-using System.Numerics;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using Veldrid;
 
 namespace Application
@@ -22,9 +22,9 @@ namespace Application
         public PrimitiveTopology meshTopology = PrimitiveTopology.TriangleList;
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor.
-        
+
         DeviceBuffer vertexBuffer;
-        DeviceBuffer indexBuffer; 
+        DeviceBuffer indexBuffer;
 
 #pragma warning restore CS8618
 
@@ -43,10 +43,10 @@ namespace Application
 
             uint vertLen = (uint)vertices.Length;
 
-            uvStart =       vertLen * vec4Size; // Where vertices end
-            normalsStart =  uvStart + (HasUV ? vertLen * vec4Size : 0); // Where uvs ends
-            colorsStart =   normalsStart + (HasNormals ? vertLen * vec4Size : 0); // Where normals end
-            bufferLength =  colorsStart + (HasColors ? vertLen * byte4Size : 0); // Where colors end
+            uvStart = vertLen * vec4Size; // Where vertices end
+            normalsStart = uvStart + (HasUV ? vertLen * vec4Size : 0); // Where uvs ends
+            colorsStart = normalsStart + (HasNormals ? vertLen * vec4Size : 0); // Where normals end
+            bufferLength = colorsStart + (HasColors ? vertLen * byte4Size : 0); // Where colors end
         }
 
         public void Upload(GraphicsDevice device)
@@ -61,7 +61,7 @@ namespace Application
 
             if (indices == null || indices.Length == 0)
                 throw new InvalidOperationException($"Mesh has no indices");
-            
+
 
             int indexLength = indices.Length;
 
@@ -97,7 +97,7 @@ namespace Application
             vertexBuffer = device.ResourceFactory.CreateBuffer(new BufferDescription((uint)bufferLength, BufferUsage.VertexBuffer));
 
             device.UpdateBuffer(vertexBuffer, 0, vertices);
-            
+
             if (HasUV)
                 device.UpdateBuffer(vertexBuffer, uvStart, uv);
 
@@ -107,7 +107,7 @@ namespace Application
             if (HasColors)
                 device.UpdateBuffer(vertexBuffer, colorsStart, colors);
         }
-        
+
         public void SetDrawData(GraphicsDevice device, CommandList commandList, BindableShader shader)
         {
             Upload(device);
@@ -128,7 +128,7 @@ namespace Application
         private static Mesh? fullscreenQuad;
         public static Mesh GetFullscreenQuad()
         {
-            if (fullscreenQuad != null) 
+            if (fullscreenQuad != null)
                 return fullscreenQuad;
 
             fullscreenQuad = new()
@@ -163,78 +163,78 @@ namespace Application
             Vector4[] vertices =
             {
                 // Front face
-                new(-x, -y, z, 0), 
-                new( x, -y, z, 0), 
-                new( x,  y, z, 0), 
+                new(-x, -y, z, 0),
+                new( x, -y, z, 0),
+                new( x,  y, z, 0),
                 new(-x,  y, z, 0),
                 
                 // Back face
-                new(-x, -y, -z, 0), 
-                new( x, -y, -z, 0), 
-                new( x,  y, -z, 0), 
+                new(-x, -y, -z, 0),
+                new( x, -y, -z, 0),
+                new( x,  y, -z, 0),
                 new(-x,  y, -z, 0),
                 
                 // Left face
-                new(-x, -y, -z, 0), 
-                new(-x,  y, -z, 0), 
-                new(-x,  y,  z, 0), 
+                new(-x, -y, -z, 0),
+                new(-x,  y, -z, 0),
+                new(-x,  y,  z, 0),
                 new(-x, -y,  z, 0),
                 
                 // Right face
-                new(x, -y,  z, 0), 
-                new(x,  y,  z, 0), 
-                new(x,  y, -z, 0), 
+                new(x, -y,  z, 0),
+                new(x,  y,  z, 0),
+                new(x,  y, -z, 0),
                 new(x, -y, -z, 0),
                 
                 // Top face
-                new(-x, y,  z, 0), 
-                new( x, y,  z, 0), 
-                new( x, y, -z, 0), 
+                new(-x, y,  z, 0),
+                new( x, y,  z, 0),
+                new( x, y, -z, 0),
                 new(-x, y, -z, 0),
                 
                 // Bottom face
-                new(-x, -y, -z, 0), 
-                new( x, -y, -z, 0), 
-                new( x, -y,  z, 0), 
+                new(-x, -y, -z, 0),
+                new( x, -y, -z, 0),
+                new( x, -y,  z, 0),
                 new(-x, -y,  z, 0)
             };
 
             Vector4[] uvs =
             {
                 // Front face
-                new(0, 0, 0, 0), 
-                new(1, 0, 0, 0), 
-                new(1, 1, 0, 0), 
+                new(0, 0, 0, 0),
+                new(1, 0, 0, 0),
+                new(1, 1, 0, 0),
                 new(0, 1, 0, 0),
 
                 // Back face
-                new(1, 0, 0, 0), 
-                new(0, 0, 0, 0), 
-                new(0, 1, 0, 0), 
+                new(1, 0, 0, 0),
+                new(0, 0, 0, 0),
+                new(0, 1, 0, 0),
                 new(1, 1, 0, 0),
 
                 // Left face
-                new(0, 0, 0, 0), 
-                new(1, 0, 0, 0), 
-                new(1, 1, 0, 0), 
+                new(0, 0, 0, 0),
+                new(1, 0, 0, 0),
+                new(1, 1, 0, 0),
                 new(0, 1, 0, 0),
 
                 // Right face
-                new(1, 0, 0, 0), 
-                new(1, 1, 0, 0), 
-                new(0, 1, 0, 0), 
+                new(1, 0, 0, 0),
+                new(1, 1, 0, 0),
+                new(0, 1, 0, 0),
                 new(0, 0, 0, 0),
 
                 // Top face
-                new(0, 1, 0, 0), 
-                new(1, 1, 0, 0), 
-                new(1, 0, 0, 0), 
+                new(0, 1, 0, 0),
+                new(1, 1, 0, 0),
+                new(1, 0, 0, 0),
                 new(0, 0, 0, 0),
 
                 // Bottom face
-                new(0, 0, 0, 0), 
-                new(1, 0, 0, 0), 
-                new(1, 1, 0, 0), 
+                new(0, 0, 0, 0),
+                new(1, 0, 0, 0),
+                new(1, 1, 0, 0),
                 new(0, 1, 0, 0)
             };
 

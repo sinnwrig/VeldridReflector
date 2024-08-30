@@ -12,7 +12,7 @@ namespace Application
                 return _emptyBuffer;
 
             _emptyBuffer = device.ResourceFactory.CreateBuffer(new BufferDescription(1, BufferUsage.StructuredBufferReadOnly));
-            
+
             return _emptyBuffer;
         }
 
@@ -23,7 +23,7 @@ namespace Application
                 return _emptyRWBuffer;
 
             _emptyRWBuffer = device.ResourceFactory.CreateBuffer(new BufferDescription(1, BufferUsage.StructuredBufferReadWrite));
-            
+
             return _emptyRWBuffer;
         }
     }

@@ -1,6 +1,5 @@
-using Veldrid;
-
 using SPIRVCross.NET;
+using Veldrid;
 
 #pragma warning disable
 
@@ -10,7 +9,7 @@ namespace Application
     {
         public static Uniform[] GetUniforms(Reflector reflector, Resources resources)
         {
-            List<Uniform> uniforms = new();       
+            List<Uniform> uniforms = new();
 
             foreach (var res in resources.StorageImages)
                 uniforms.Add(new Uniform(GetName(reflector, res.id), GetBinding(reflector, res.id), ResourceKind.TextureReadWrite));
@@ -45,7 +44,7 @@ namespace Application
 
             if (reflector.HasDecoration(bufferResource.id, Decoration.NonWritable))
                 return new Uniform(bufferResource.name, binding, ResourceKind.StructuredBufferReadOnly);
-            
+
             string name = GetName(reflector, bufferResource.id);
 
             return new Uniform(name, binding, ResourceKind.StructuredBufferReadWrite);
@@ -82,7 +81,7 @@ namespace Application
                 member.arrayStride = 0;
                 if (type.ArrayDimensions != 0)
                     member.arrayStride = reflector.StructMemberArrayStride(baseType, i);
-                
+
                 member.matrixStride = 0;
                 if (type.Columns > 1)
                     member.matrixStride = reflector.StructMemberMatrixStride(baseType, i);
@@ -93,20 +92,20 @@ namespace Application
                 member.type = type.BaseType switch
                 {
                     BaseType.Boolean or
-                    BaseType.Int8 or 
-                    BaseType.Int16 or 
-                    BaseType.Int32 or 
+                    BaseType.Int8 or
+                    BaseType.Int16 or
+                    BaseType.Int32 or
                     BaseType.Int64
                         => ValueType.Int,
 
                     BaseType.Float16 or
                     BaseType.Float32 or
-                    BaseType.Float64 
+                    BaseType.Float64
                         => ValueType.Float,
 
-                    BaseType.UInt8 or 
-                    BaseType.UInt16 or 
-                    BaseType.UInt32 or 
+                    BaseType.UInt8 or
+                    BaseType.UInt16 or
+                    BaseType.UInt32 or
                     BaseType.UInt64
                         => ValueType.UInt,
                 };
@@ -135,14 +134,14 @@ namespace Application
 
         static bool IsPrimitiveType(BaseType type)
         {
-            return 
-                type == BaseType.Boolean || 
-                type == BaseType.Float16 || 
-                type == BaseType.Float32 || 
-                type == BaseType.Float64 || 
-                type == BaseType.Int16 || 
-                type == BaseType.Int32 || 
-                type == BaseType.Int64 || 
+            return
+                type == BaseType.Boolean ||
+                type == BaseType.Float16 ||
+                type == BaseType.Float32 ||
+                type == BaseType.Float64 ||
+                type == BaseType.Int16 ||
+                type == BaseType.Int32 ||
+                type == BaseType.Int64 ||
                 type == BaseType.Int8 ||
                 type == BaseType.UInt16 ||
                 type == BaseType.UInt32 ||

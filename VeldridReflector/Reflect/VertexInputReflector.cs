@@ -1,8 +1,7 @@
-using Veldrid;
-
-using SPIRVCross.NET;
-using System.Text.RegularExpressions;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
+using SPIRVCross.NET;
+using Veldrid;
 
 #pragma warning disable
 
@@ -27,19 +26,20 @@ namespace Application
             return Equals(other);
         }
 
-        public bool Equals(StageInput other) 
+        public bool Equals(StageInput other)
             => semantic == other.semantic;
-        
+
         public override int GetHashCode()
             => semantic.GetHashCode();
-    }    
+    }
 
     public static partial class VertexInputReflector
     {
 
         public delegate bool SemanticFormatter(string semantic, out VertexElementFormat format);
 
-        public static StageInput[] GetStageInputs(Reflector reflector, Resources resources, SemanticFormatter formatter) {
+        public static StageInput[] GetStageInputs(Reflector reflector, Resources resources, SemanticFormatter formatter)
+        {
             StageInput[] inputLocations = new StageInput[resources.StageInputs.Length];
 
             for (int i = 0; i < resources.StageInputs.Length; i++)

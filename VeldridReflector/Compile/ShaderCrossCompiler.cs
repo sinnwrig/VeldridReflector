@@ -1,11 +1,9 @@
-using Veldrid;
-
+using System.Text;
 using SPIRVCross.NET;
 using SPIRVCross.NET.GLSL;
 using SPIRVCross.NET.HLSL;
 using SPIRVCross.NET.MSL;
-
-using System.Text;
+using Veldrid;
 
 #pragma warning disable
 
@@ -54,7 +52,7 @@ namespace Application
 
                 MergeUniforms(uniforms, stages, stageUniforms, shader.Stage);
             }
-            
+
             return new ReflectedResourceInfo() { vertexInputs = vertexInputs, uniforms = uniforms.ToArray(), stages = stages.ToArray() };
         }
 
@@ -68,16 +66,16 @@ namespace Application
                 ShaderDescription shader = compiledSPIRV[i];
                 result[i] = CrossCompile(context, backend, shader.Stage, shader.EntryPoint, shader.ShaderBytes);
             }
-            
+
             return result;
         }
 
 
-        private static ShaderDescription CrossCompile( 
+        private static ShaderDescription CrossCompile(
             Context context,
-            GraphicsBackend backend, 
-            ShaderStages stage, 
-            string entrypoint, 
+            GraphicsBackend backend,
+            ShaderStages stage,
+            string entrypoint,
             byte[] sourceSPIRV)
         {
             ShaderDescription shader = new();
@@ -98,7 +96,7 @@ namespace Application
 
             return shader;
         }
-        
+
 
         private static byte[] CompileHLSL(Context context, ParsedIR IR)
         {
@@ -160,8 +158,8 @@ namespace Application
             {
                 int match = uniforms.FindIndex(x => x.IsEqual(ub));
 
-                if (match == -1)  
-                {            
+                if (match == -1)
+                {
                     // No match, add the uniform
                     uniforms.Add(ub);
                     stages.Add(stage);

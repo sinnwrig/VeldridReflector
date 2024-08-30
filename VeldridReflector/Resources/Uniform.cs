@@ -1,6 +1,6 @@
 using System;
-using Veldrid;
 using System.Text;
+using Veldrid;
 
 namespace Application
 {
@@ -20,8 +20,8 @@ namespace Application
         UInt
     }
 
-    public struct UniformMember 
-    { 
+    public struct UniformMember
+    {
         public string name;
 
         public uint bufferOffsetInBytes;
@@ -31,12 +31,12 @@ namespace Application
         public uint size;
         public uint arrayStride;
         public uint matrixStride;
-        
+
         public ValueType type;
     }
 
     public class Uniform
-    { 
+    {
         private static string CleanseName(string rawName)
         {
             return rawName.Replace("type.", "");
@@ -82,7 +82,7 @@ namespace Application
                 return sb.ToString();
 
             sb.AppendLine($"  Byte size: {size}");
-            
+
             if (members == null)
                 return sb.ToString();
 
@@ -111,7 +111,7 @@ namespace Application
 
             if (kind == ResourceKind.UniformBuffer && size != other.size && !members.SequenceEqual(other.members))
                 return false;
-            
+
             return name == other.name && binding == other.binding;
         }
     }

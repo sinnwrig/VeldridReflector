@@ -1,7 +1,5 @@
 using Veldrid;
 
-using System.Text.RegularExpressions;
-
 #pragma warning disable
 
 namespace Application
@@ -13,21 +11,17 @@ namespace Application
         public readonly ResourceLayout resourceLayout;
 
         private Dictionary<string, uint> semanticLookup;
-        private Dictionary<string, ulong> uniformLookup;
+        private Dictionary<string, uint> uniformLookup;
 
-        private int bufferCount;
+        private sbyte bufferCount;
 
         public Uniform[] Uniforms => description.Uniforms;
-
-
-        [GeneratedRegex(@"\d+$")]
-        private static partial Regex TrailingInteger();
 
 
         public BindableShader(BindableShaderDescription description, ShaderDescription[] shaderDescriptions, GraphicsDevice device)
         {
             this.description = description;
-            
+
             // Create shader set description
             Shader[] shaders = new Shader[shaderDescriptions.Length];
 
@@ -49,8 +43,8 @@ namespace Application
                 semanticLookup[input.semantic] = (uint)inputIndex;
 
                 // If the last char of the semantic is a single '0', add a non-indexed version of the semantic to the lookup.
-                if (input.semantic.Length >= 2 && 
-                    input.semantic[input.semantic.Length - 1] == '0' && 
+                if (input.semantic.Length >= 2 &&
+                    input.semantic[input.semantic.Length - 1] == '0' &&
                     !char.IsNumber(input.semantic[input.semantic.Length - 2]))
                 {
                     semanticLookup[input.semantic.Substring(0, input.semantic.Length - 1)] = (uint)inputIndex;
@@ -68,25 +62,25 @@ namespace Application
             ResourceLayoutDescription layoutDescription = new ResourceLayoutDescription(
                 new ResourceLayoutElementDescription[Uniforms.Length]);
 
-            for (ushort uniformIndex = 0; uniformIndex < Uniforms.Length; uniformIndex++)
+            for (byte uniformIndex = 0; uniformIndex < Uniforms.Length; uniformIndex++)
             {
                 Uniform uniform = Uniforms[uniformIndex];
                 ShaderStages stages = description.UniformStages[uniformIndex];
 
                 Console.WriteLine(uniform.ToString());
 
-                layoutDescription.Elements[uniform.binding] = 
+                layoutDescription.Elements[uniform.binding] =
                     new ResourceLayoutElementDescription(uniform.name, uniform.kind, stages);
 
                 uniformLookup[uniform.name] = Pack(uniformIndex, -1, -1);
 
                 if (uniform.kind != ResourceKind.UniformBuffer)
                     continue;
-                
-                uniformLookup[uniform.name] = Pack(uniformIndex, (short)bufferCount, -1);
+
+                uniformLookup[uniform.name] = Pack(uniformIndex, (sbyte)bufferCount, -1);
 
                 for (short member = 0; member < uniform.members.Length; member++)
-                    uniformLookup[uniform.members[member].name] = Pack(uniformIndex, (short)bufferCount, member);
+                    uniformLookup[uniform.members[member].name] = Pack(uniformIndex, (sbyte)bufferCount, member);
 
                 bufferCount++;
             }
@@ -104,13 +98,13 @@ namespace Application
 
             if (uniform.kind == ResourceKind.TextureReadWrite)
                 return TextureUtils.GetEmptyRWTexture(device);
-            
+
             if (uniform.kind == ResourceKind.Sampler)
                 return device.PointSampler;
 
             if (uniform.kind == ResourceKind.StructuredBufferReadOnly)
                 return BufferUtils.GetEmptyBuffer(device);
-            
+
             if (uniform.kind == ResourceKind.StructuredBufferReadWrite)
                 return BufferUtils.GetEmptyRWBuffer(device);
 
@@ -136,7 +130,7 @@ namespace Application
                     boundBuffers[b] = buffer;
                     intermediateBuffers[b] = new byte[buffer.SizeInBytes];
 
-                    b++; 
+                    b++;
                 }
             }
 
@@ -147,17 +141,15 @@ namespace Application
         }
 
 
-        public bool GetUniform(string name, out int uniform, out int buffer, out int member)
+        public bool GetUniform(string name, out byte uniform, out sbyte buffer, out short member)
         {
-            uniform = -1;
+            uniform = 0;
             buffer = -1;
             member = -1;
 
-            if (uniformLookup.TryGetValue(name, out ulong packed))
+            if (uniformLookup.TryGetValue(name, out uint packed))
             {
-                Unpack(packed, out ushort u, out short b, out member);
-                uniform = (int)u;
-                buffer = (int)b;
+                Unpack(packed, out uniform, out buffer, out member);
                 return true;
             }
 
@@ -171,10 +163,10 @@ namespace Application
                 list.SetVertexBuffer(location, buffer, offset);
         }
 
-        public static ulong Pack(ushort a, short b, int c)
-            => ((ulong)(ushort)a << 48) | ((ulong)(ushort)b << 32) | (uint)c;
+        public static uint Pack(byte a, sbyte b, short c)
+            => ((uint)a << 24) | ((uint)(byte)b << 16) | (ushort)c;
 
-        public static void Unpack(ulong packed, out ushort a, out short b, out int c)    
-            => (a, b, c) = ((ushort)(packed >> 48), (short)(packed >> 32), (int)(packed & uint.MaxValue));
+        public static void Unpack(uint packed, out byte a, out sbyte b, out short c)
+            => (a, b, c) = ((byte)(packed >> 24), (sbyte)(packed >> 16), (short)(packed & ushort.MaxValue));
     }
 }
